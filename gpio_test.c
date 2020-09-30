@@ -9,7 +9,9 @@
 #include <linux/mutex.h>
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>
+
 #include <asm/io.h>
+
 #include "define.h"
 
 
@@ -17,11 +19,14 @@
 #define NR_DEVICES   1
 #define REG(addr) (*((volatile unsigned int*)(addr)))
 
+
+
 static int major = 0;
 module_param(major, int, 0);
 
 static int minor = 0;
 module_param(minor, int, 0);
+
 
 static unsigned long gpio_base =  GPIO_BASE;
 static int nr_devices = NR_DEVICES;
@@ -75,21 +80,115 @@ unsigned char *kbuf, *ptr;
 }
 
 
+
+static int my_atoi(char *str)
+{
+int num = 0;
+
+    while(*str != '\0'){
+        if ( *str < 48 || *str > 57 ) {
+            break;
+        }
+        num += *str - 48;
+        num *= 10;
+        str++;
+    }
+
+    num /= 10;
+    return num;
+}
+
+
+
 static ssize_t gpio_write(struct file *filp,
 	                       const char __user *buf, size_t count, loff_t *f_pos)
 {
-char outval;
-struct gpio_test_dev *dev = filp->private_data;;
+struct gpio_test_dev *dev = filp->private_data;
+unsigned char *kbuf;
+//void __iomem *io_addr;
+int mode, outval, pin;
+int retval;
+
+
 	mutex_lock(&dev->mutex);
 
-	get_user(outval, &buf[0]);
-	if (outval == '1')
-		REG(dev->io_base + GPFSET0) = 1 << 4;
-	if (outval == '0')
-		REG(dev->io_base + GPCLR0) = 1 << 4;
+	kbuf = kmalloc(count, GFP_KERNEL);
+	if (!kbuf)
+		return -ENOMEM;
+	if (copy_from_user(kbuf, buf, count))
+		return -EFAULT;
 
+	switch (kbuf[0]) {
+		case '0' : mode = 0; break;
+		case '1' : mode = 1; break;
+		default :
+			retval = -EFAULT;
+			goto fail;
+	}
+	switch (kbuf[1]) {
+		case '0' : outval = 0; break;
+		case '1' : outval = 1; break;
+		default  :
+			retval = -EFAULT;
+			goto fail;
+	}
+	pin = my_atoi(&kbuf[2]);
+	if (pin < 0 || pin > 57) {
+		retval = -EFAULT;
+		goto fail;
+	}
+
+	printk("mode = %d, outval = %d, pin = %d\n", mode, outval, pin);
+	switch (pin) {
+		case  0 ... 9:
+		REG(dev->io_base + GPFSEL0) = 1 << (3 * pin);
+		break;
+
+		case 10 ... 19 :
+		REG(dev->io_base + GPFSEL1) = 1 << (3 * (pin-10));
+		break;
+
+		case 20 ... 29 : break;
+		REG(dev->io_base + GPFSEL2) = 1 << (3 * (pin-20));
+		break;
+
+		case 30 ... 39 : break;
+		REG(dev->io_base + GPFSEL3) = 1 << (3 * (pin-30));
+		break;
+
+		case 40 ... 49 : break;
+		REG(dev->io_base + GPFSEL4) = 1 << (3 * (pin-40));
+		break;
+
+		case 50 ... 57 : break;
+		REG(dev->io_base + GPFSEL5) = 1 << (3 * (pin-50));
+		break;
+	}
+
+
+	switch (pin) {
+		case 0 ... 31:
+
+		if (outval == 1)
+			REG(dev->io_base + GPFSET0) = 1 << pin;
+		else if (outval == 0)
+			REG(dev->io_base + GPCLR0) = 1 << pin;
+		break;
+
+		case 32 ... 57:
+		if (outval == 1)
+			REG(dev->io_base + GPFSET1) = 1 << (pin - 31);
+		else if (outval == 0)
+			REG(dev->io_base + GPCLR1) = 1 << (pin -31);
+		break;
+	}
+	retval = count;
+
+
+  fail:
+    kfree(kbuf);
 	mutex_unlock(&dev->mutex);
-	return count;
+	return retval;
 }
 
 
@@ -106,7 +205,6 @@ struct gpio_test_dev *dev;
 		return -ENOMEM;
 
 	filp->private_data = dev;
-	REG(dev->io_base + GPFSEL0) = 1 << 12;
 	mutex_unlock(&dev->mutex);
 
 	return 0;
@@ -143,12 +241,13 @@ static void gpio_cleanup(void)
 dev_t devno = MKDEV(major, minor);
 
 	if (device) {
+		cdev_del(&device->cdev);
 		kfree(device);
+
 	}
 
 	unregister_chrdev_region(devno, nr_devices);
 }
-
 
 
 static void setup_cdev(struct gpio_test_dev *dev)
