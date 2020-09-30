@@ -138,6 +138,7 @@ int retval;
 		goto fail;
 	}
 
+
 	printk("mode = %d, outval = %d, pin = %d\n", mode, outval, pin);
 	switch (pin) {
 		case  0 ... 9:
@@ -148,19 +149,19 @@ int retval;
 		REG(dev->io_base + GPFSEL1) = 1 << (3 * (pin-10));
 		break;
 
-		case 20 ... 29 : break;
+		case 20 ... 29 :
 		REG(dev->io_base + GPFSEL2) = 1 << (3 * (pin-20));
 		break;
 
-		case 30 ... 39 : break;
+		case 30 ... 39 :
 		REG(dev->io_base + GPFSEL3) = 1 << (3 * (pin-30));
 		break;
 
-		case 40 ... 49 : break;
+		case 40 ... 49 :
 		REG(dev->io_base + GPFSEL4) = 1 << (3 * (pin-40));
 		break;
 
-		case 50 ... 57 : break;
+		case 50 ... 57 : 
 		REG(dev->io_base + GPFSEL5) = 1 << (3 * (pin-50));
 		break;
 	}
@@ -168,7 +169,6 @@ int retval;
 
 	switch (pin) {
 		case 0 ... 31:
-
 		if (outval == 1)
 			REG(dev->io_base + GPFSET0) = 1 << pin;
 		else if (outval == 0)
@@ -186,7 +186,7 @@ int retval;
 
 
   fail:
-    kfree(kbuf);
+	kfree(kbuf);
 	mutex_unlock(&dev->mutex);
 	return retval;
 }
