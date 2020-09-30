@@ -161,7 +161,7 @@ int retval;
 		REG(dev->io_base + GPFSEL4) = 1 << (3 * (pin-40));
 		break;
 
-		case 50 ... 57 : 
+		case 50 ... 57 :
 		REG(dev->io_base + GPFSEL5) = 1 << (3 * (pin-50));
 		break;
 	}
@@ -306,3 +306,4 @@ dev_t   devno = 0;
 module_init(gpio_init);
 module_exit(gpio_cleanup);
 MODULE_LICENSE("Dual BSD/GPL");
+MODULE_AUTHOR("kohei-wada");
