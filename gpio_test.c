@@ -14,10 +14,8 @@
 
 #include "define.h"
 
-
 #define DEVICE_NAME  "gpio_test"
 #define NR_DEVICES   1
-#define REG(addr) (*((volatile unsigned int*)(addr)))
 
 
 
@@ -26,7 +24,6 @@ module_param(major, int, 0);
 
 static int minor = 0;
 module_param(minor, int, 0);
-
 
 static unsigned long gpio_base =  GPIO_BASE;
 static int nr_devices = NR_DEVICES;
@@ -40,10 +37,10 @@ static ssize_t gpio_read(struct file *filp,
 {
 int retval;
 struct gpio_test_dev *dev = filp->private_data;
-
 void __iomem *io_addr;
 unsigned long addr = dev->base + *f_pos;
 unsigned char *kbuf, *ptr;
+
 
 	mutex_lock(&dev->mutex);
 	if (addr + count > GPIO_BASE + MEM_SIZE)
@@ -105,7 +102,7 @@ static ssize_t gpio_write(struct file *filp,
 {
 struct gpio_test_dev *dev = filp->private_data;
 unsigned char *kbuf;
-//void __iomem *io_addr;
+void __iomem *io_addr;
 int mode, outval, pin;
 int retval;
 
@@ -138,52 +135,60 @@ int retval;
 		goto fail;
 	}
 
-
-	printk("mode = %d, outval = %d, pin = %d\n", mode, outval, pin);
 	switch (pin) {
-		case  0 ... 9:
-		REG(dev->io_base + GPFSEL0) = 1 << (3 * pin);
+	case  0 ... 9:
+		io_addr = (void __iomem *)(dev->io_base + GPFSEL0);
+		iowrite32(1 << (3 * pin), io_addr);
 		break;
-
-		case 10 ... 19 :
-		REG(dev->io_base + GPFSEL1) = 1 << (3 * (pin-10));
+	case 10 ... 19 :
+		io_addr = (void __iomem *)(dev->io_base + GPFSEL1);
+		iowrite32(1 << (3 * (pin - 10)), io_addr);
 		break;
-
-		case 20 ... 29 :
-		REG(dev->io_base + GPFSEL2) = 1 << (3 * (pin-20));
+	case 20 ... 29 :
+		io_addr = (void __iomem *)(dev->io_base + GPFSEL2);
+		iowrite32(1 << (3 * (pin - 20)), io_addr);
 		break;
-
-		case 30 ... 39 :
-		REG(dev->io_base + GPFSEL3) = 1 << (3 * (pin-30));
+	case 30 ... 39 :
+		io_addr = (void __iomem *)(dev->io_base + GPFSEL3);
+		iowrite32(1 << (3 * (pin - 30)), io_addr);
 		break;
-
-		case 40 ... 49 :
-		REG(dev->io_base + GPFSEL4) = 1 << (3 * (pin-40));
+	case 40 ... 49 :
+		io_addr = (void __iomem *)(dev->io_base + GPFSEL4);
+		iowrite32(1 << (3 * (pin - 40)), io_addr);
 		break;
-
-		case 50 ... 57 :
-		REG(dev->io_base + GPFSEL5) = 1 << (3 * (pin-50));
+	case 50 ... 57 :
+		io_addr = (void __iomem *)(dev->io_base + GPFSEL5);
+		iowrite32(1 << (3 * (pin - 50)), io_addr);
 		break;
 	}
-
 
 	switch (pin) {
 		case 0 ... 31:
-		if (outval == 1)
-			REG(dev->io_base + GPFSET0) = 1 << pin;
-		else if (outval == 0)
-			REG(dev->io_base + GPCLR0) = 1 << pin;
+
+		if (outval == 1) {
+			io_addr = (void __iomem *)(dev->io_base + GPFSET0);
+			iowrite32(1 << pin, io_addr);
+		}
+
+		else if (outval == 0) {
+			io_addr = (void __iomem *)(dev->io_base + GPCLR0);
+		}
+			iowrite32(1 << pin, io_addr);
 		break;
 
 		case 32 ... 57:
-		if (outval == 1)
-			REG(dev->io_base + GPFSET1) = 1 << (pin - 31);
-		else if (outval == 0)
-			REG(dev->io_base + GPCLR1) = 1 << (pin -31);
+		if (outval == 1) {
+			io_addr = (void __iomem *)(dev->io_base + GPFSET1);
+			iowrite32(1 << (pin - 31), io_addr);
+		}
+		else if (outval == 0) {
+			io_addr = (void __iomem *)(dev->io_base + GPCLR1);
+			iowrite32(1 << (pin - 31), io_addr);
+		}
 		break;
 	}
-	retval = count;
 
+	retval = count;
 
   fail:
 	kfree(kbuf);
@@ -211,11 +216,13 @@ struct gpio_test_dev *dev;
 }
 
 
+
 static int gpio_release(struct inode *inode, struct file *filp)
 {
 struct gpio_test_dev *dev;
 
 	dev = container_of(inode->i_cdev, struct gpio_test_dev, cdev);
+
 	mutex_lock(&dev->mutex);
 	iounmap((void *)dev->io_base);
 	dev->io_base = 0;
@@ -243,7 +250,6 @@ dev_t devno = MKDEV(major, minor);
 	if (device) {
 		cdev_del(&device->cdev);
 		kfree(device);
-
 	}
 
 	unregister_chrdev_region(devno, nr_devices);
@@ -264,7 +270,6 @@ int err, devno = MKDEV(major, minor);
 }
 
 
-
 static int __init gpio_init(void)
 {
 
@@ -279,8 +284,10 @@ dev_t   devno = 0;
 		result = alloc_chrdev_region(&devno, minor, nr_devices, DEVICE_NAME);
 		major = MAJOR(devno);
 	}
-	if (result < 0)
+	if (result < 0) {
+		printk(KERN_INFO "cannot get major num\n");
 		return result;
+	}
 
 
 	device = kmalloc(sizeof(struct gpio_test_dev), GFP_KERNEL);
@@ -288,8 +295,9 @@ dev_t   devno = 0;
 		result = -ENOMEM;
 		goto fail;
 	}
-
 	memset(device, 0, sizeof(struct gpio_test_dev));
+
+
 	setup_cdev(device);
 	mutex_init(&device->mutex);
 	device->base = (unsigned long)gpio_base;
