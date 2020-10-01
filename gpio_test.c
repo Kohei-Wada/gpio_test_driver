@@ -163,8 +163,7 @@ int retval;
 	}
 
 	switch (pin) {
-		case 0 ... 31:
-
+	case 0 ... 31:
 		if (outval == 1) {
 			io_addr = (void __iomem *)(dev->io_base + GPFSET0);
 			iowrite32(1 << pin, io_addr);
@@ -176,7 +175,7 @@ int retval;
 			iowrite32(1 << pin, io_addr);
 		break;
 
-		case 32 ... 57:
+	case 32 ... 57:
 		if (outval == 1) {
 			io_addr = (void __iomem *)(dev->io_base + GPFSET1);
 			iowrite32(1 << (pin - 31), io_addr);
