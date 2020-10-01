@@ -77,7 +77,6 @@ unsigned char *kbuf, *ptr;
 }
 
 
-
 static int my_atoi(char *str)
 {
 int num = 0;
@@ -96,6 +95,8 @@ int num = 0;
 }
 
 
+enum gpio_modes {GPIO_IN=0, GPIO_OUT};
+enum gpio_pin   {OFF=0, ON};
 
 static ssize_t gpio_write(struct file *filp,
 	                       const char __user *buf, size_t count, loff_t *f_pos)
@@ -115,72 +116,95 @@ int retval;
 	if (copy_from_user(kbuf, buf, count))
 		return -EFAULT;
 
+	//gpio_pin_mode
 	switch (kbuf[0]) {
-		case '0' : mode = 0; break;
-		case '1' : mode = 1; break;
-		default :
-			retval = -EFAULT;
-			goto fail;
-	}
-	switch (kbuf[1]) {
-		case '0' : outval = 0; break;
-		case '1' : outval = 1; break;
-		default  :
-			retval = -EFAULT;
-			goto fail;
-	}
-	pin = my_atoi(&kbuf[2]);
-	if (pin < 0 || pin > 57) {
-		retval = -EFAULT;
+	case '0' :
+		mode = GPIO_OUT;
+		break;
+
+	case '1' :
+		mode = GPIO_IN;
+		break;
+
+	default :
+		retval = -EINVAL;
 		goto fail;
 	}
+
+	//gpio_pin_status
+	switch (kbuf[1]) {
+	case '0' :
+		outval = OFF;
+		break;
+
+	case '1' :
+		outval = ON;
+		break;
+
+	default  :
+		retval = -EINVAL;
+		goto fail;
+	}
+
+	//pin number
+	pin = my_atoi(&kbuf[2]);
+	if (pin < 0 || pin > 57) {
+		retval = -EINVAL;
+		goto fail;
+	}
+
 
 	switch (pin) {
 	case  0 ... 9:
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL0);
 		iowrite32(1 << (3 * pin), io_addr);
 		break;
+
 	case 10 ... 19 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL1);
 		iowrite32(1 << (3 * (pin - 10)), io_addr);
 		break;
+
 	case 20 ... 29 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL2);
 		iowrite32(1 << (3 * (pin - 20)), io_addr);
 		break;
+
 	case 30 ... 39 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL3);
 		iowrite32(1 << (3 * (pin - 30)), io_addr);
 		break;
+
 	case 40 ... 49 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL4);
 		iowrite32(1 << (3 * (pin - 40)), io_addr);
 		break;
+
 	case 50 ... 57 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL5);
 		iowrite32(1 << (3 * (pin - 50)), io_addr);
 		break;
 	}
 
+
 	switch (pin) {
 	case 0 ... 31:
-		if (outval == 1) {
+		if (outval == ON) {
 			io_addr = (void __iomem *)(dev->io_base + GPFSET0);
 			iowrite32(1 << pin, io_addr);
 		}
-
-		else if (outval == 0) {
+		else if (outval == OFF) {
 			io_addr = (void __iomem *)(dev->io_base + GPCLR0);
-		}
 			iowrite32(1 << pin, io_addr);
+		}
 		break;
 
 	case 32 ... 57:
-		if (outval == 1) {
+		if (outval == ON) {
 			io_addr = (void __iomem *)(dev->io_base + GPFSET1);
 			iowrite32(1 << (pin - 31), io_addr);
 		}
-		else if (outval == 0) {
+		else if (outval == OFF) {
 			io_addr = (void __iomem *)(dev->io_base + GPCLR1);
 			iowrite32(1 << (pin - 31), io_addr);
 		}
@@ -188,6 +212,7 @@ int retval;
 	}
 
 	retval = count;
+
 
   fail:
 	kfree(kbuf);
@@ -220,13 +245,14 @@ static int gpio_release(struct inode *inode, struct file *filp)
 {
 struct gpio_test_dev *dev;
 
-	dev = container_of(inode->i_cdev, struct gpio_test_dev, cdev);
+	dev = filp->private_data;
 
 	mutex_lock(&dev->mutex);
 	iounmap((void *)dev->io_base);
 	dev->io_base = 0;
 
 	mutex_unlock(&dev->mutex);
+
 	return 0;
 }
 
