@@ -16,6 +16,7 @@
 
 #define DEVICE_NAME  "gpio_test"
 #define NR_DEVICES   1
+#define BUF_SIZE     8
 
 
 
@@ -39,7 +40,7 @@ int retval;
 struct gpio_test_dev *dev = filp->private_data;
 void __iomem *io_addr;
 unsigned long addr = dev->base + *f_pos;
-unsigned char *kbuf, *ptr;
+unsigned char *kbuf = NULL, *ptr = NULL;
 
 
 	mutex_lock(&dev->mutex);
@@ -95,14 +96,14 @@ int num = 0;
 }
 
 
-enum gpio_modes {GPIO_IN=0, GPIO_OUT};
+
 enum gpio_pin   {OFF=0, ON};
 
 static ssize_t gpio_write(struct file *filp,
 	                       const char __user *buf, size_t count, loff_t *f_pos)
 {
 struct gpio_test_dev *dev = filp->private_data;
-unsigned char *kbuf;
+unsigned char *kbuf = NULL;
 void __iomem *io_addr;
 int mode, outval, pin;
 int retval;
@@ -110,20 +111,30 @@ int retval;
 
 	mutex_lock(&dev->mutex);
 
+	if (count > BUF_SIZE) {
+		retval = -EINVAL;
+		goto fail;
+	}
+
 	kbuf = kmalloc(count, GFP_KERNEL);
-	if (!kbuf)
-		return -ENOMEM;
-	if (copy_from_user(kbuf, buf, count))
-		return -EFAULT;
+	if (!kbuf) {
+		retval = -ENOMEM;
+		goto fail;
+	}
+
+	if (copy_from_user(kbuf, buf, count)) {
+		retval = -EFAULT;
+		goto fail;
+	}
 
 	//gpio_pin_mode
 	switch (kbuf[0]) {
 	case '0' :
-		mode = GPIO_OUT;
+		mode = GPSEL_INPUT;
 		break;
 
 	case '1' :
-		mode = GPIO_IN;
+		mode = GPSEL_OUTPUT;
 		break;
 
 	default :
@@ -157,32 +168,32 @@ int retval;
 	switch (pin) {
 	case  0 ... 9:
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL0);
-		iowrite32(1 << (3 * pin), io_addr);
+		iowrite32(mode << (3 * pin), io_addr);
 		break;
 
 	case 10 ... 19 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL1);
-		iowrite32(1 << (3 * (pin - 10)), io_addr);
+		iowrite32(mode << (3 * (pin - 10)), io_addr);
 		break;
 
 	case 20 ... 29 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL2);
-		iowrite32(1 << (3 * (pin - 20)), io_addr);
+		iowrite32(mode << (3 * (pin - 20)), io_addr);
 		break;
 
 	case 30 ... 39 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL3);
-		iowrite32(1 << (3 * (pin - 30)), io_addr);
+		iowrite32(mode << (3 * (pin - 30)), io_addr);
 		break;
 
 	case 40 ... 49 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL4);
-		iowrite32(1 << (3 * (pin - 40)), io_addr);
+		iowrite32(mode << (3 * (pin - 40)), io_addr);
 		break;
 
 	case 50 ... 57 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL5);
-		iowrite32(1 << (3 * (pin - 50)), io_addr);
+		iowrite32(mode << (3 * (pin - 50)), io_addr);
 		break;
 	}
 
