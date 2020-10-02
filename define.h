@@ -39,4 +39,5 @@ struct gpio_test_dev {
     struct mutex  mutex;
     unsigned long base;
     unsigned long io_base;
+    unsigned int registers[6];
 };

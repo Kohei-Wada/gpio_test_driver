@@ -98,7 +98,6 @@ int num = 0;
 
 
 enum gpio_pin   {OFF=0, ON};
-
 static ssize_t gpio_write(struct file *filp,
 	                       const char __user *buf, size_t count, loff_t *f_pos)
 {
@@ -164,37 +163,81 @@ int retval;
 		goto fail;
 	}
 
-
 	switch (pin) {
 	case  0 ... 9:
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL0);
-		iowrite32(mode << (3 * pin), io_addr);
+		switch (mode) {
+		case GPSEL_INPUT:
+			break;
+		case GPSEL_OUTPUT:
+			dev->registers[0] |= mode << (3 * pin);
+			break;
+		}
+		iowrite32((u32)dev->registers[0], io_addr);
 		break;
 
 	case 10 ... 19 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL1);
-		iowrite32(mode << (3 * (pin - 10)), io_addr);
+		switch (mode) {
+		case GPSEL_INPUT:
+			break;
+		case GPSEL_OUTPUT:
+			dev->registers[1] |= mode << (3 * (pin - 10));
+			break;
+		}
+		iowrite32((u32)dev->registers[1], io_addr);
 		break;
+
 
 	case 20 ... 29 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL2);
-		iowrite32(mode << (3 * (pin - 20)), io_addr);
+		switch (mode) {
+		case GPSEL_INPUT:
+			break;
+		case GPSEL_OUTPUT:
+			dev->registers[2] |= mode << (3 * (pin - 20));
+			break;
+		}
+		iowrite32((u32)dev->registers[2], io_addr);
 		break;
+
 
 	case 30 ... 39 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL3);
-		iowrite32(mode << (3 * (pin - 30)), io_addr);
+		switch (mode) {
+		case GPSEL_INPUT:
+			break;
+		case GPSEL_OUTPUT:
+			dev->registers[3] |= mode << (3 * (pin - 30));
+			break;
+		}
+		iowrite32((u32)dev->registers[3], io_addr);
 		break;
 
 	case 40 ... 49 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL4);
-		iowrite32(mode << (3 * (pin - 40)), io_addr);
+		switch (mode) {
+		case GPSEL_INPUT:
+			break;
+		case GPSEL_OUTPUT:
+			dev->registers[4] |= mode << (3 * (pin - 40));
+			break;
+		}
+		iowrite32((u32)dev->registers[4], io_addr);
 		break;
 
 	case 50 ... 57 :
 		io_addr = (void __iomem *)(dev->io_base + GPFSEL5);
-		iowrite32(mode << (3 * (pin - 50)), io_addr);
+		switch (mode) {
+		case GPSEL_INPUT:
+			break;
+		case GPSEL_OUTPUT:
+			dev->registers[5] |= mode << (3 * (pin - 50));
+			break;
+		}
+		iowrite32((u32)dev->registers[5], io_addr);
 		break;
+
 	}
 
 
