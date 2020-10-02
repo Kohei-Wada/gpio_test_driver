@@ -19,7 +19,6 @@
 #define BUF_SIZE     8
 
 
-
 static int major = 0;
 module_param(major, int, 0);
 
@@ -29,7 +28,6 @@ module_param(minor, int, 0);
 static unsigned long gpio_base =  GPIO_BASE;
 static int nr_devices = NR_DEVICES;
 static struct gpio_test_dev *device;
-
 
 
 
@@ -163,21 +161,26 @@ int retval, index;
 		goto fail;
 	}
 
-	index = pin / 10;
 
 	//gpselregister
+	index = pin / 10;
 	io_addr = (void __iomem *)(dev->io_base + (index * 0x4));
+
 	switch (mode) {
 	case GPSEL_INPUT :
+		dev->registers[index] = ~(~dev->registers[index] | ~mode << (3*(pin - index*10)));//?
 		break;
+
 	case GPSEL_OUTPUT :
 		dev->registers[index] |= mode << (3 * (pin - index *10));
 		break;
 	}
 	iowrite32((u32)dev->registers[index], io_addr);
 
-	index = pin / 32;
 
+
+	//mode output
+	index = pin / 32;
 	switch (outval) {
 	case ON:
 		io_addr = (void __iomem *)(dev->io_base + GPFSET0 + (index * 0x4));
