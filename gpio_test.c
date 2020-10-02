@@ -105,7 +105,7 @@ struct gpio_test_dev *dev = filp->private_data;
 unsigned char *kbuf = NULL;
 void __iomem *io_addr;
 int mode, outval, pin;
-int retval;
+int retval, index;
 
 
 	mutex_lock(&dev->mutex);
@@ -163,105 +163,30 @@ int retval;
 		goto fail;
 	}
 
-	switch (pin) {
-	case  0 ... 9:
-		io_addr = (void __iomem *)(dev->io_base + GPFSEL0);
-		switch (mode) {
-		case GPSEL_INPUT:
-			break;
-		case GPSEL_OUTPUT:
-			dev->registers[0] |= mode << (3 * pin);
-			break;
-		}
-		iowrite32((u32)dev->registers[0], io_addr);
+	index = pin / 10;
+
+	//gpselregister
+	io_addr = (void __iomem *)(dev->io_base + (index * 0x4));
+	switch (mode) {
+	case GPSEL_INPUT :
 		break;
-
-	case 10 ... 19 :
-		io_addr = (void __iomem *)(dev->io_base + GPFSEL1);
-		switch (mode) {
-		case GPSEL_INPUT:
-			break;
-		case GPSEL_OUTPUT:
-			dev->registers[1] |= mode << (3 * (pin - 10));
-			break;
-		}
-		iowrite32((u32)dev->registers[1], io_addr);
+	case GPSEL_OUTPUT :
+		dev->registers[index] |= mode << (3 * (pin - index *10));
 		break;
-
-
-	case 20 ... 29 :
-		io_addr = (void __iomem *)(dev->io_base + GPFSEL2);
-		switch (mode) {
-		case GPSEL_INPUT:
-			break;
-		case GPSEL_OUTPUT:
-			dev->registers[2] |= mode << (3 * (pin - 20));
-			break;
-		}
-		iowrite32((u32)dev->registers[2], io_addr);
-		break;
-
-
-	case 30 ... 39 :
-		io_addr = (void __iomem *)(dev->io_base + GPFSEL3);
-		switch (mode) {
-		case GPSEL_INPUT:
-			break;
-		case GPSEL_OUTPUT:
-			dev->registers[3] |= mode << (3 * (pin - 30));
-			break;
-		}
-		iowrite32((u32)dev->registers[3], io_addr);
-		break;
-
-	case 40 ... 49 :
-		io_addr = (void __iomem *)(dev->io_base + GPFSEL4);
-		switch (mode) {
-		case GPSEL_INPUT:
-			break;
-		case GPSEL_OUTPUT:
-			dev->registers[4] |= mode << (3 * (pin - 40));
-			break;
-		}
-		iowrite32((u32)dev->registers[4], io_addr);
-		break;
-
-	case 50 ... 57 :
-		io_addr = (void __iomem *)(dev->io_base + GPFSEL5);
-		switch (mode) {
-		case GPSEL_INPUT:
-			break;
-		case GPSEL_OUTPUT:
-			dev->registers[5] |= mode << (3 * (pin - 50));
-			break;
-		}
-		iowrite32((u32)dev->registers[5], io_addr);
-		break;
-
 	}
+	iowrite32((u32)dev->registers[index], io_addr);
 
+	index = pin / 32;
 
-	switch (pin) {
-	case 0 ... 31:
-		if (outval == ON) {
-			io_addr = (void __iomem *)(dev->io_base + GPFSET0);
-			iowrite32(1 << pin, io_addr);
-		}
-		else if (outval == OFF) {
-			io_addr = (void __iomem *)(dev->io_base + GPCLR0);
-			iowrite32(1 << pin, io_addr);
-		}
+	switch (outval) {
+	case ON:
+		io_addr = (void __iomem *)(dev->io_base + GPFSET0 + (index * 0x4));
+		iowrite32(1 << (pin - index * 31), io_addr);
 		break;
 
-	case 32 ... 57:
-		if (outval == ON) {
-			io_addr = (void __iomem *)(dev->io_base + GPFSET1);
-			iowrite32(1 << (pin - 31), io_addr);
-		}
-		else if (outval == OFF) {
-			io_addr = (void __iomem *)(dev->io_base + GPCLR1);
-			iowrite32(1 << (pin - 31), io_addr);
-		}
+	case OFF:
+		io_addr = (void __iomem *)(dev->io_base + GPCLR0 + (index * 0x4));
+		iowrite32(1 << (pin - index * 31), io_addr);
 		break;
 	}
 
@@ -381,11 +306,12 @@ dev_t   devno = 0;
 	mutex_init(&device->mutex);
 	device->base = (unsigned long)gpio_base;
 	device->io_base = 0;
-
     return 0;
 
+
   fail:
-    gpio_cleanup();
+
+	gpio_cleanup();
 	return result;
 }
 
