@@ -162,7 +162,7 @@ int retval, index;
 	}
 
 
-	//gpselregister
+	//gpsel register
 	index = pin / 10;
 	io_addr = (void __iomem *)(dev->io_base + (index * 0x4));
 
@@ -178,23 +178,20 @@ int retval, index;
 	iowrite32((u32)dev->registers[index], io_addr);
 
 
-
 	//mode output
 	index = pin / 32;
 	switch (outval) {
 	case ON:
 		io_addr = (void __iomem *)(dev->io_base + GPFSET0 + (index * 0x4));
-		iowrite32(1 << (pin - index * 31), io_addr);
 		break;
-
 	case OFF:
 		io_addr = (void __iomem *)(dev->io_base + GPCLR0 + (index * 0x4));
-		iowrite32(1 << (pin - index * 31), io_addr);
 		break;
 	}
+	iowrite32(1 << (pin - index * 31), io_addr);
+
 
 	retval = count;
-
 
   fail:
 	kfree(kbuf);
